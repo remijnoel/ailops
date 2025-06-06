@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
+
 	// "net"
 	"os"
 	"path/filepath"
@@ -157,6 +159,51 @@ type RemoteResult struct {
 	Host    string
 }
 
+func IsCommandAllowed(command string, config *models.DebugSessionConfig) bool {
+	if config == nil {
+		log.Warn("No session config provided, allowing nothing.")
+		return false // No restrictions if no config
+	}
+
+	if len(config.CommandWhitelist) > 0 {
+		for _, allowed := range config.CommandWhitelist {
+			matched, err := regexp.MatchString("^"+regexp.QuoteMeta(allowed)+"(\\s|$)", command)
+			if err != nil {
+				log.Warnf("Invalid regex pattern for whitelist command '%s': %v", allowed, err)
+				continue
+			}
+			if matched {
+				log.Debugf("Command '%s' is allowed by whitelist pattern '%s'", command, allowed)
+				return true
+			}
+		}
+		log.Warnf("Command '%s' is NOT allowed by whitelist", command)
+		return false // Not in whitelist
+	}
+
+	if len(config.CommandBlacklist) > 0 {
+		for _, disallowed := range config.CommandBlacklist {
+			matched, err := regexp.MatchString("^"+regexp.QuoteMeta(disallowed)+"(\\s|$)", command)
+			if err != nil {
+				log.Warnf("Invalid regex pattern for blacklist command '%s': %v", disallowed, err)
+				continue
+			}
+			if matched {
+				log.Warnf("Command '%s' is disallowed by blacklist pattern '%s'", command, disallowed)
+				return false // In blacklist
+			}
+		}
+		log.Debugf("Command '%s' is allowed by default (not in blacklist)", command)
+		return true // Not in blacklist
+	}
+
+	log.Debugf("No command restrictions configured, allowing command '%s'", command)
+	return true // No restrictions, allow all commands
+
+}
+
+
+
 func RunCommands(actions []*models.Action) {
 	log.Infof("Running commands in parallel for %d actions", len(actions))
 	localCommands := make(map[string]*models.Action)
@@ -238,10 +285,28 @@ Constraints:
 - Tailor recommendations to maximize useful insight with minimal output.
 
 Recommendations Rules:
+{{if .Session.Config.CommandWhitelist }}
+- Only suggest commands from the following whitelist:
+{{range .Session.Config.CommandWhitelist }}
+	- {{.}}
+{{end}}
+{{else if .Session.Config.CommandBlacklist }}
+- Only suggest commands that are NOT in the following blacklist:
+{{range .Session.Config.CommandBlacklist }}
+	- {{.}}
+{{end}}
+{{else }}
+- Only suggest commands that are safe and appropriate for the current debugging context.
+{{end}}
+
 - Only suggest up to 5 shell commands per batch.
 - All commands must be read-only (do not alter system state).
 - No interactive commands (avoid prompts, user input, or commands that run in a loop; use, for example, 'top -n 1' instead of 'top').
+{{ if .Session.Config.UseSudo }}
+- ALWAYS use ‘sudo’ in all commands.
+{{else }}
 - NEVER include ‘sudo’ in any command.
+{{ end }}
 - Do not repeat any commands already included in the debugging history.
 - Each command should include a concise comment at the end explaining its purpose (e.g., ps aux # list processes).
 - Commands must be executable as-is in a shell, without extra context or input.

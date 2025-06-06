@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/remijnoel/ailops/internal"
 	"time"
+
+	"github.com/remijnoel/ailops/internal"
 )
 
 type Action struct {
@@ -44,14 +45,23 @@ func (b *Batch) AddAction(name string, actionType string) *Action {
 	return action
 }
 
+type DebugSessionConfig struct {
+	FirstCommands []string `json:"first_commands"` // Initial commands to run for debugging
+	Remote        string   `json:"remote"`         // Remote host to run commands on, if applicable
+	UseSudo       bool     `json:"use_sudo"`       // Whether to use sudo for commands
+	CommandWhitelist []string `json:"command_whitelist"` // List of allowed commands for security
+	CommandBlacklist  []string `json:"command_blacklist"`  // List of disallowed commands for security
+}
+
 type DebugSessionLog struct {
-	ID               string   `json:"id"`
-	IssueDescription string   `json:"issue_description"`
-	Batches          []*Batch `json:"batches"`
-	StartTime        string   `json:"start_time"`
-	EndTime          string   `json:"end_time"`
-	Summary          string   `json:"summary"`
-	Diagnosed        bool     `json:"ended"`
+	ID               string              `json:"id"`
+	IssueDescription string              `json:"issue_description"`
+	Batches          []*Batch            `json:"batches"`
+	StartTime        string              `json:"start_time"`
+	EndTime          string              `json:"end_time"`
+	Summary          string              `json:"summary"`
+	Diagnosed        bool                `json:"ended"`
+	Config           *DebugSessionConfig `json:"config"` // Configuration for the workflow
 }
 
 func (d *DebugSessionLog) SetIssueDescription(description string) {

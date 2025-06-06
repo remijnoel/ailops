@@ -16,10 +16,16 @@ import (
 func RunLastBatch(session *models.DebugSessionLog, llmProvider llm.Provider) {
 	batch := session.LastBatch()
 	log.Infof("Running batch: %s", batch.Description)
-	// For now, let's consider all Actions as commands
-	actions := batch.Actions
-	// Run all commands in parallel and update the actions with the results
 
+	// For now, let's consider all Actions as commands
+	var actions []*models.Action
+	for _, action := range batch.Actions {
+		if IsCommandAllowed(action.Name, session.Config) {
+			actions = append(actions, action)
+		}
+	}
+
+	// Run all commands in parallel and update the actions with the results
 	RunCommands(actions)
 
 	// Include all analysis history and the commands output in the prompt
@@ -40,12 +46,15 @@ func RunLastBatch(session *models.DebugSessionLog, llmProvider llm.Provider) {
 	}
 }
 
-func Init(conf WorkflowConfig) *models.DebugSessionLog {
-	log.Infof("Initializing debug session with issue: %s", conf.IssueDescription)
+func Init(issueDescription string, conf *models.DebugSessionConfig) *models.DebugSessionLog {
+	log.Infof("Initializing debug session with issue: %s", issueDescription)
 	log.Infof("First commands to run: %v", conf.FirstCommands)
 
 	actions := make([]*models.Action, 0, len(conf.FirstCommands))
 	for _, cmd := range conf.FirstCommands {
+		if conf.UseSudo {
+			cmd = "sudo " + cmd // Prepend sudo if configured
+		}
 		action := &models.Action{
 			Name:       cmd,
 			ActionType: "command",
@@ -67,7 +76,8 @@ func Init(conf WorkflowConfig) *models.DebugSessionLog {
 		ID:               internal.GenerateUniqueID(),
 		StartTime:        time.Now().Format(time.RFC3339),
 		Batches:          []*models.Batch{batch},
-		IssueDescription: conf.IssueDescription,
+		IssueDescription: issueDescription,
+		Config:           conf,
 	}
 
 	return sessionLog
@@ -115,15 +125,8 @@ func FinalAnalysis(sessionLog *models.DebugSessionLog, llmProvider llm.Provider)
 	sessionLog.Summary = response
 }
 
-type WorkflowConfig struct {
-	IssueDescription string   `json:"issue_description"`
-	FirstCommands    []string `json:"first_commands"`
-	Remote           string   `json:"remote"`
-	UseSudo          bool     `json:"use_sudo"`
-}
-
-func DebugWorkflow(conf WorkflowConfig, interactive bool, llmProvider llm.Provider) *models.DebugSessionLog {
-	sessionLog := Init(conf)
+func DebugWorkflow(issueDescription string, conf *models.DebugSessionConfig, interactive bool, llmProvider llm.Provider) *models.DebugSessionLog {
+	sessionLog := Init(issueDescription, conf)
 
 	// For now, loop 5 times to simulate multiple batches
 	for range 5 {

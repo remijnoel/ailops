@@ -5,12 +5,12 @@ import (
 	"os"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
-	"github.com/remijnoel/ailops/internal"
 	"github.com/remijnoel/ailops/llm"
-	"github.com/remijnoel/ailops/ui"
+	"github.com/remijnoel/ailops/models"
 	"github.com/remijnoel/ailops/workflow"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var op = llm.NewOpenAIProvider(
@@ -19,39 +19,9 @@ var op = llm.NewOpenAIProvider(
 	llm.OPENAI_GPT41_Mini, // Using a smaller model for faster response times
 )
 
-var debugHostCmd = &cobra.Command{
-	Use:   "debughost",
-	Short: "Debug host with targeted diagnostics and LLM analysis",
-	Run: func(cmd *cobra.Command, args []string) {
-		// Define commands to run for debugging the host
-		commands := []string{
-			"ps aux | head -10",
-		}
-		log.Debug("Running debughost commands: ", commands)
-
-		// Initialize a progress bar for command execution
-		sp := ui.NewSpinner("Running diagnostics")
-
-		// Run commands in parallel with progress bar
-
-		results := internal.RunCommandsParallel(commands)
-		log.Debug("Command results: ", results)
-		sp.Clear()
-		sp.Finish()
-
-		sp = ui.NewSpinner("Analyzing with LLM")
-		analysis := llm.AnalyzeCommands(results, op)
-		sp.Clear()
-		sp.Finish()
-
-		log.Debug("LLM analysis result: ", analysis)
-		rendered := markdown.Render(analysis, 100, 2)
-		fmt.Println(string(rendered))
-	},
-}
 
 var debugCmd = &cobra.Command{
-	Use:   "debug",
+	Use:   "diagnose",
 	Short: "Debug host with targeted diagnostics and LLM analysis",
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -65,6 +35,13 @@ var debugCmd = &cobra.Command{
 
 		}
 
+		log.Debug("Log env prefix: ", viper.GetEnvPrefix())
+
+		whitelist := viper.GetStringSlice("cmd_whitelist")
+		log.Debug("Command whitelist: ", whitelist)
+		blacklist := viper.GetStringSlice("cmd_blacklist")
+		log.Debug("Command blacklist: ", blacklist)
+
 		// Define commands to run for debugging the host
 		commands := []string{
 			"top -b -n1 | head -20",
@@ -73,13 +50,15 @@ var debugCmd = &cobra.Command{
 			"free -h",
 			"dmesg | tail -n 50",
 		}
-		log.Debug("Running debughost commands: ", commands)
 
-		session := workflow.DebugWorkflow(workflow.WorkflowConfig{
-			IssueDescription: description,
+		log.Debug("Running commands: ", commands)
+
+		session := workflow.DebugWorkflow(description, &models.DebugSessionConfig{
 			FirstCommands:    commands,
 			Remote:           remote,
 			UseSudo:          useSudo,
+			CommandWhitelist: whitelist,
+			CommandBlacklist: blacklist,
 		}, interactive, op)
 		rendered := markdown.Render(session.Summary, 100, 2)
 		fmt.Println(string(rendered))
