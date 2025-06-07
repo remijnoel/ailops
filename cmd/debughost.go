@@ -19,7 +19,6 @@ var op = llm.NewOpenAIProvider(
 	llm.OPENAI_GPT41_Mini, // Using a smaller model for faster response times
 )
 
-
 var debugCmd = &cobra.Command{
 	Use:   "diagnose",
 	Short: "Debug host with targeted diagnostics and LLM analysis",
@@ -35,23 +34,14 @@ var debugCmd = &cobra.Command{
 
 		}
 
-		log.Debug("Log env prefix: ", viper.GetEnvPrefix())
-
 		whitelist := viper.GetStringSlice("cmd_whitelist")
 		log.Debug("Command whitelist: ", whitelist)
 		blacklist := viper.GetStringSlice("cmd_blacklist")
 		log.Debug("Command blacklist: ", blacklist)
 
 		// Define commands to run for debugging the host
-		commands := []string{
-			"top -b -n1 | head -20",
-			"ps aux | head -10",
-			"df -h",
-			"free -h",
-			"dmesg | tail -n 50",
-		}
-
-		log.Debug("Running commands: ", commands)
+		commands := viper.GetStringSlice("initial_commands")
+		log.Debug("Initial commands from config: ", commands)
 
 		session := workflow.DebugWorkflow(description, &models.DebugSessionConfig{
 			FirstCommands:    commands,
@@ -60,6 +50,7 @@ var debugCmd = &cobra.Command{
 			CommandWhitelist: whitelist,
 			CommandBlacklist: blacklist,
 		}, interactive, op)
+		
 		rendered := markdown.Render(session.Summary, 100, 2)
 		fmt.Println(string(rendered))
 	},

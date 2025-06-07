@@ -13,6 +13,12 @@ const DEFAULT_CONFIG = `
 log_level: warn
 cmd_whitelist:
 cmd_blacklist:
+initial_commands:
+  - "top -b -n1 | head -20"
+  - "ps aux | head -10"
+  - "df -h"
+  - "free -h"
+  - "dmesg | tail -n 50"
 `
 
 func config(userConfigPath string){
@@ -39,5 +45,6 @@ func config(userConfigPath string){
 
     // Read from environment variables (override previous)
     viper.SetEnvPrefix("AILOPS")
+	log.Debugf("Loading environment variables with prefix %s", viper.GetEnvPrefix())
     viper.AutomaticEnv() // Maps env vars to keys
 }
