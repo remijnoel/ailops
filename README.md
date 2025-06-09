@@ -1,4 +1,4 @@
-*# ailops
+# ailops
 
 Ailops is a CLI tool to perform debugging with the help of a large language model (OpenAI for now).
 
