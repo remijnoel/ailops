@@ -14,7 +14,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kaptinlin/jsonschema"
 	"github.com/remijnoel/ailops/internal"
 	"github.com/remijnoel/ailops/llm"
 	"github.com/remijnoel/ailops/models"
@@ -387,43 +386,18 @@ func FinalAnalysisPromptWithSessionLog(sessionLog *models.DebugSessionLog) strin
 }
 
 type CommandAnalysisResponse struct {
-	Analysis        string   `json:"analysis"`
-	Recommendations []string `json:"recommendations"`
-	Final           bool     `json:"final"`
+	Analysis        string   `json:"analysis" jsonschema:"required" jsonschema_description:"Analysis of the command outputs within the context of the current issue"`
+	Recommendations []string `json:"recommendations" jsonschema:"required" jsonschema_description:"Recommended list of shell commands to execute as next steps to diagnose or resolve the issue"`
+	Final           bool     `json:"final" jsonschema:"required" jsonschema_description:"Set to true if you are confident the debugging process is complete and no further commands are needed. Set to false if more steps are recommended."`
 }
 
 func AnalyzeCommands(prompt string, provider llm.Provider) CommandAnalysisResponse {
 	log.Debugf("Analyzing commands with prompt: %s", prompt)
 
-	// Compile schema
-	compiler := jsonschema.NewCompiler()
-	schema, err := compiler.Compile([]byte(`{
-	"type": "object",
-	"properties": {
-		"analysis": {
-			"type": "string",
-			"description": "Analysis of the command outputs within the context of the current issue"
-		},
-		"recommendations": {
-			"type": "array",
-			"items": {
-				"type": "string",
-				"description": "Recommended list of shell commands to execute as next steps to diagnose or resolve the issue"
-			}
-		},
-		"final": {
-			"type": "boolean",
-			"description": "Set to true if you are confident the debugging process is complete and no further commands are needed. Set to false if more steps are recommended."
-		}
-	},
-	"description": "Analysis of commands and diagnostics.",
-	"required": [
-		"analysis",
-		"recommendations",
-		"final"
-	],
-	"additionalProperties": false
-}`))
+	// Generate schema
+	schema := llm.GenerateSchema[CommandAnalysisResponse]()
+
+	log.Debugf("Generated JSON schema for command analysis: %v", schema)
 
 	res, err := provider.RequestCompletionWithJSONSchema(prompt, schema)
 	if err != nil {

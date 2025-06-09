@@ -2,8 +2,6 @@ package llm
 
 import (
 	"fmt"
-
-	"github.com/kaptinlin/jsonschema"
 )
 
 type Model struct {
@@ -15,7 +13,7 @@ type Model struct {
 // Define the interface
 type Provider interface {
     RequestCompletion(string) (string, error)
-	RequestCompletionWithJSONSchema(string,  *jsonschema.Schema) (string, error)
+	RequestCompletionWithJSONSchema(string,  interface{}) (string, error)
 }
 
 func AnalyzeCommands(results map[string]string, provider Provider) string {
