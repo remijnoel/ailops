@@ -2,9 +2,12 @@ package llm
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/invopop/jsonschema"
 	openai "github.com/openai/openai-go"
+	"github.com/openai/openai-go/azure"
 	"github.com/openai/openai-go/option"
 
 	log "github.com/sirupsen/logrus"
@@ -17,7 +20,37 @@ type OpenAIProvider struct {
 	model        Model
 }
 
-func NewOpenAIProvider(apiKey string, systemPrompt string, model Model) *OpenAIProvider {
+type OpenAIProviderConfig struct {
+	APIKey       string
+	SystemPrompt string
+	Model        Model
+	AzureConfig *AzureConfig // Optional, for Azure OpenAI
+}
+
+
+func NewOpenAIProvider(conf OpenAIProviderConfig) *OpenAIProvider {
+	if conf.APIKey == "" && conf.AzureConfig == nil {
+		log.Fatal("API key or Azure configuration is required for OpenAI provider")
+	}
+
+	if conf.AzureConfig != nil {
+		// Create Azure OpenAI provider
+		op, err := NewAzureOpenAIProvider(*conf.AzureConfig, conf.SystemPrompt, conf.Model)
+		if err != nil {
+			log.Fatalf("Failed to create Azure OpenAI provider: %v", err)
+		}
+		return op
+	}
+	// Create Native OpenAI provider
+	if conf.APIKey == "" {
+		log.Fatal("API key is required for OpenAI provider")
+	}
+
+	return NewNativeOpenAIProvider(conf.APIKey, conf.SystemPrompt, conf.Model)
+}
+	
+
+func NewNativeOpenAIProvider(apiKey string, systemPrompt string, model Model) *OpenAIProvider {
 	// Pass apiKey as env var OPENAI_API_KEY, or use WithAPIKey if needed
 	client := openai.NewClient(
 		option.WithAPIKey(apiKey),
@@ -27,6 +60,30 @@ func NewOpenAIProvider(apiKey string, systemPrompt string, model Model) *OpenAIP
 		systemPrompt: systemPrompt,
 		model:        model,
 	}
+}
+
+type AzureConfig struct {
+    Endpoint       string
+    APIVersion     string
+    APIKey         string // optional, fallback to token
+    DeploymentName string // azure deployment name
+}
+
+func NewAzureOpenAIProvider(cfg AzureConfig, systemPrompt string, model Model) (*OpenAIProvider, error) {
+    opts := []option.RequestOption{
+        azure.WithEndpoint(cfg.Endpoint, cfg.APIVersion),
+    }
+    if cfg.APIKey != "" {
+        opts = append(opts, azure.WithAPIKey(cfg.APIKey))
+    } else {
+        cred, err := azidentity.NewDefaultAzureCredential(nil)
+        if err != nil {
+            return nil, fmt.Errorf("failed to get Azure credential: %w", err)
+        }
+        opts = append(opts, azure.WithTokenCredential(cred))
+    }
+    client := openai.NewClient(opts...)
+    return &OpenAIProvider{client: client, systemPrompt: systemPrompt, model: Model{Name: cfg.DeploymentName}}, nil
 }
 
 func GenerateSchema[T any]() interface{} {

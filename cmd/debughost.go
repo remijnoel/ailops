@@ -14,16 +14,36 @@ import (
 	"github.com/spf13/viper"
 )
 
-var op = llm.NewOpenAIProvider(
-	os.Getenv("OPENAI_API_KEY"),
-	"You are a Linux system assistant. Analyze the following system diagnostics and provide a clear, concise summary of system health, notable issues, and recommended actions.",
-	llm.OPENAI_GPT41_Mini, // Using a smaller model for faster response times
-)
+// var op = llm.NewOpenAIProvider(
+// 	os.Getenv("OPENAI_API_KEY"),
+// 	"You are a Linux system assistant. Analyze the following system diagnostics and provide a clear, concise summary of system health, notable issues, and recommended actions.",
+// 	llm.OPENAI_GPT41_Mini, // Using a smaller model for faster response times
+// )
 
 var debugCmd = &cobra.Command{
 	Use:   "diagnose",
 	Short: "Diagnose an issue on a host",
 	Run: func(cmd *cobra.Command, args []string) {
+		useAzure, _ := cmd.Flags().GetBool("azure")
+		var azureConfig *llm.AzureConfig
+
+		if useAzure {
+			log.Info("Using Azure OpenAI for diagnostics")
+			azureConfig = &llm.AzureConfig{
+				APIKey:     os.Getenv("AZURE_OPENAI_API_KEY"),
+				Endpoint:   viper.GetString("azure_openai_endpoint"),
+				APIVersion: viper.GetString("azure_openai_api_version"),
+			}
+		}
+
+		op := llm.NewOpenAIProvider(
+			llm.OpenAIProviderConfig{
+				APIKey:       os.Getenv("OPENAI_API_KEY"),
+				SystemPrompt: "You are a Linux system assistant. Analyze the following system diagnostics and provide a clear, concise summary of system health, notable issues, and recommended actions.",
+				Model:        llm.OPENAI_GPT41_Mini, // Using a smaller model for faster response times
+				AzureConfig:  azureConfig,
+			},
+		)
 
 		interactive, _ := cmd.Flags().GetBool("interactive")
 		remote, _ := cmd.Flags().GetString("remote")
@@ -90,4 +110,5 @@ func init() {
 	debugCmd.Flags().StringP("remote", "r", "", "Execute commands on a remote host (ssh format 'user@host') instead of locally")
 	debugCmd.Flags().BoolP("sudo", "s", false, "Run all commands with sudo (default: false)")
 	debugCmd.Flags().BoolP("generate-report", "g", false, "Generate a report after debugging (default: false)")
+	debugCmd.Flags().Bool("azure", false, "Use Azure OpenAI instead of OpenAI (default: false)")
 }

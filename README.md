@@ -47,6 +47,14 @@ To use the OpenAI API, set the `OPENAI_API_KEY` environment variable with your k
 export OPENAI_API_KEY=your_openai_api_key
 ```
 
+To use an Azure endpoint, set the API key and endpoint as follows:
+
+```bash
+export AZURE_OPENAI_API_KEY=<your_azure_openai_api_key>
+export AILOPS_AZURE_OPENAI_ENDPOINT=https://<your-azure-endpoint>.openai.azure.com/
+export AILOPS_AZURE_OPENAI_API_VERSION=2023-05-15
+```
+
 ### Other Configurations
 
 The tool can be configured using a configuration file or environment variables. The following keys are allowed:

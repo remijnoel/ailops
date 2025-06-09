@@ -29,3 +29,4 @@ func AnalyzeCommands(results map[string]string, provider Provider) string {
 	
 	return res
 }
+
