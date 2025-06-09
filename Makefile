@@ -21,5 +21,8 @@ build-linux-amd64:
 	mkdir -p $(BUILD_DIR)
 	GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(APP_NAME)-linux-amd64 .
 
+install: build
+	cp $(BUILD_DIR)/$(APP_NAME) /usr/local/bin/
+
 clean:
 	rm -rf $(BUILD_DIR)

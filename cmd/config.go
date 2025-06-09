@@ -14,7 +14,7 @@ log_level: warn
 cmd_whitelist:
 cmd_blacklist:
 azure_openai_api_version: "2024-12-01-preview"
-azure_openai_endpoint: "https://ailops.cognitiveservices.azure.com/openai/deployments/gpt-4.1-mini/"
+azure_openai_endpoint:
 initial_commands:
   - "top -b -n1 | head -20"
   - "ps aux | head -10"
