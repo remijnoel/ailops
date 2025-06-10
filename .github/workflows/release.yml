@@ -31,17 +31,13 @@ jobs:
 
       - name: Build
         run: |
-          mkdir -p dist
-          OUTPUT="dist/${{ matrix.goos }}_${{ matrix.goarch }}"
-          if [ "${{ matrix.goos }}" == "windows" ]; then
-            OUTPUT="$OUTPUT.exe"
-          fi
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} make build BINARY=$OUTPUT
+          echo "Building for GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}"
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} make build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: binary_${{ matrix.goos }}_${{ matrix.goarch }}
           path: dist/*
 
   release:
@@ -53,7 +49,6 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: binaries
           path: dist/
 
       - name: Create GitHub Release

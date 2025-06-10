@@ -10,7 +10,14 @@ all: build
 .PHONY: build
 build:
 	mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(APP_NAME) .
+	@if [ -n "$(GOOS)" ] && [ -n "$(GOARCH)" ]; then \
+		OUT=$(BUILD_DIR)/$(APP_NAME); \
+		if [ "$(GOOS)" = "windows" ]; then OUT=$$OUT.exe; fi; \
+		echo "Cross-compiling for $(GOOS)/$(GOARCH)"; \
+		GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $$OUT .; \
+	else \
+		go build -o $(BUILD_DIR)/$(APP_NAME) .; \
+	fi
 
 # Build for a specific OS/Arch (e.g. make build-cross GOOS=linux GOARCH=arm64)
 .PHONY: build-cross
