@@ -104,6 +104,7 @@ var debugCmd = &cobra.Command{
 }
 
 func init() {
+	RootCmd.AddCommand(debugCmd)
 	debugCmd.Flags().StringP("description", "d", "", "Description of the issue to debug")
 	debugCmd.MarkFlagRequired("description")
 	debugCmd.Flags().BoolP("interactive", "i", false, "Run in interactive mode (default: false)")
