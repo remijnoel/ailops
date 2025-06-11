@@ -1,6 +1,9 @@
 APP_NAME := ailops
 BUILD_DIR := dist
 PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+ARCH := $(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/i386/386/')
+BINARY_NAME := $(APP_NAME)-$(OS)-$(ARCH)
 
 # Default target
 .PHONY: all
@@ -41,6 +44,18 @@ build-all:
 		echo "Building $$GOOS/$$GOARCH..."; \
 		GOOS=$$GOOS GOARCH=$$GOARCH go build -o $$OUT .; \
 	done
+
+.PHONY: docs
+docs:
+	@if [ -f "$(BUILD_DIR)/$(APP_NAME)" ] && [ -x "$(BUILD_DIR)/$(APP_NAME)" ]; then \
+		$(BUILD_DIR)/$(APP_NAME) docs generate; \
+	elif [ -f "$(BUILD_DIR)/$(APP_NAME)-$(OS)-$(ARCH)" ] && [ -x "$(BUILD_DIR)/$(APP_NAME)-$(OS)-$(ARCH)" ]; then \
+		$(BUILD_DIR)/$(APP_NAME)-$(OS)-$(ARCH) docs generate; \
+	else \
+		echo "Build the application first using 'make build'"; \
+		exit 1; \
+	fi
+
 
 # Install locally (current platform)
 .PHONY: install
