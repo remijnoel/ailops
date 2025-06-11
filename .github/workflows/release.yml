@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'  # Triggers on every v* tag, like v1.0.0
 
+env:
+  APP_NAME: ailops  # change to your app's name
+
 jobs:
   build:
     name: Build and Release Binaries
@@ -33,12 +36,16 @@ jobs:
         run: |
           echo "Building for GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}"
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} make build
-
+      - name: Create zip archive
+        run: |
+          echo "Creating zip archive for GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }}"
+          cd dist
+          zip -r ${APP_NAME}-${{ matrix.goos }}_${{ matrix.goarch }}.zip *
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: binary_${{ matrix.goos }}_${{ matrix.goarch }}
-          path: dist/*
+          name: ${APP_NAME}-${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/${APP_NAME}-${{ matrix.goos }}_${{ matrix.goarch }}.zip
 
   release:
     name: Release
