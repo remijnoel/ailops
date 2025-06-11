@@ -44,6 +44,8 @@ jobs:
     name: Release
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create a release
 
     steps:
       - name: Download artifacts
@@ -55,5 +57,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/**/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
