@@ -1,0 +1,6 @@
+# config.yaml for LiteLLM to proxy to OpenAI public API
+model_list:
+  - model_name: gpt-4.1-mini   # The name you'll use in API calls
+    litellm_params:
+      model: openai/gpt-4.1-mini
+      api_key: os.environ/OPENAI_API_KEY

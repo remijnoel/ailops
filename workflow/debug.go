@@ -32,7 +32,11 @@ func RunLastBatch(session *models.DebugSessionLog, llmProvider llm.Provider) {
 	prompt := CommandAnalysisPrompt(session, true, true)
 
 	// Analyze the results using the LLM provider
-	commandAnalysis := AnalyzeCommands(prompt, llmProvider)
+	commandAnalysis, err := AnalyzeCommands(prompt, llmProvider)
+	if err != nil {
+		log.Errorf("Failed to analyze commands: %v", err)
+		return
+	}
 	batch.Analysis = commandAnalysis.Analysis
 	batch.NextSteps = commandAnalysis.Recommendations
 	batch.Completed = true // Mark the batch as completed after analysis

@@ -24,6 +24,12 @@ To generate a markdown report of the diagnosis, you can use the `--report` optio
 ailops diagnose --description "Describe the issue here" --report
 ```
 
+To use an alternate base URL for the OpenAI API (tested with LiteLLM only), you can either:
+
+- Set the `--base-url` option when running the command
+- Set the `AILOPS_BASE_URL` environment variable
+- Or use the configuration file key `base_url`
+
 ## Build
 
 To build the project, just use the Makefile:

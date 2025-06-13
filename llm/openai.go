@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-
 type OpenAIProvider struct {
 	client       openai.Client
 	systemPrompt string
@@ -24,9 +23,9 @@ type OpenAIProviderConfig struct {
 	APIKey       string
 	SystemPrompt string
 	Model        Model
-	AzureConfig *AzureConfig // Optional, for Azure OpenAI
+	BaseUrl      string
+	AzureConfig  *AzureConfig // Optional, for Azure OpenAI
 }
-
 
 func NewOpenAIProvider(conf OpenAIProviderConfig) *OpenAIProvider {
 	if conf.APIKey == "" && conf.AzureConfig == nil {
@@ -46,44 +45,51 @@ func NewOpenAIProvider(conf OpenAIProviderConfig) *OpenAIProvider {
 		log.Fatal("API key is required for OpenAI provider")
 	}
 
-	return NewNativeOpenAIProvider(conf.APIKey, conf.SystemPrompt, conf.Model)
+	return NewNativeOpenAIProvider(conf)
 }
-	
 
-func NewNativeOpenAIProvider(apiKey string, systemPrompt string, model Model) *OpenAIProvider {
-	// Pass apiKey as env var OPENAI_API_KEY, or use WithAPIKey if needed
-	client := openai.NewClient(
-		option.WithAPIKey(apiKey),
-	)
+func NewNativeOpenAIProvider(c OpenAIProviderConfig) *OpenAIProvider {
+	opts := []option.RequestOption{}
+	if c.APIKey != "" {
+		log.Debugf("Setting OpenAI API key")
+		opts = append(opts, option.WithAPIKey(c.APIKey))
+	}
+	if c.BaseUrl != "" {
+		log.Debugf("Setting OpenAI base URL to: %s", c.BaseUrl)
+		opts = append(opts, option.WithBaseURL(c.BaseUrl))
+	}
+	log.Debugf("Options for OpenAI client: %v", opts)
+
+	client := openai.NewClient(opts...)
 	return &OpenAIProvider{
 		client:       client,
-		systemPrompt: systemPrompt,
-		model:        model,
+		systemPrompt: c.SystemPrompt,
+		model:        c.Model,
 	}
 }
 
 type AzureConfig struct {
-    Endpoint       string
-    APIVersion     string
-    APIKey         string // optional, fallback to token
-    DeploymentName string // azure deployment name
+	Endpoint       string
+	APIVersion     string
+	APIKey         string // optional, fallback to token
+	DeploymentName string // azure deployment name
 }
 
 func NewAzureOpenAIProvider(cfg AzureConfig, systemPrompt string, model Model) (*OpenAIProvider, error) {
-    opts := []option.RequestOption{
-        azure.WithEndpoint(cfg.Endpoint, cfg.APIVersion),
-    }
-    if cfg.APIKey != "" {
-        opts = append(opts, azure.WithAPIKey(cfg.APIKey))
-    } else {
-        cred, err := azidentity.NewDefaultAzureCredential(nil)
-        if err != nil {
-            return nil, fmt.Errorf("failed to get Azure credential: %w", err)
-        }
-        opts = append(opts, azure.WithTokenCredential(cred))
-    }
-    client := openai.NewClient(opts...)
-    return &OpenAIProvider{client: client, systemPrompt: systemPrompt, model: Model{Name: cfg.DeploymentName}}, nil
+	opts := []option.RequestOption{
+		azure.WithEndpoint(cfg.Endpoint, cfg.APIVersion),
+	}
+	if cfg.APIKey != "" {
+		opts = append(opts, azure.WithAPIKey(cfg.APIKey))
+	} else {
+		cred, err := azidentity.NewDefaultAzureCredential(nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get Azure credential: %w", err)
+		}
+		opts = append(opts, azure.WithTokenCredential(cred))
+	}
+	client := openai.NewClient(opts...)
+	return &OpenAIProvider{client: client, systemPrompt: systemPrompt, model: Model{Name: cfg.DeploymentName}}, nil
 }
 
 func GenerateSchema[T any]() interface{} {
@@ -151,58 +157,3 @@ func (p *OpenAIProvider) RequestCompletionWithJSONSchema(prompt string, schema a
 	// Return raw JSON, user can unmarshal as needed
 	return resp.Choices[0].Message.Content, nil
 }
-
-// func (p *OpenAIProvider) RequestCompletionWithJSONSchema(prompt string, jsonSchema *jsonschema.Schema) (string, error) {
-
-// 	resp, err := p.client.CreateChatCompletion(
-// 		context.Background(),
-// 		openai.ChatCompletionRequest{
-// 			Model: p.model.Name,
-// 			Messages: []openai.ChatCompletionMessage{
-// 				{
-// 					Role:    openai.ChatMessageRoleSystem,
-// 					Content: p.systemPrompt,
-// 				},
-// 				{
-// 					Role:    openai.ChatMessageRoleUser,
-// 					Content: prompt,
-// 				},
-// 			},
-// 			ResponseFormat: &openai.ChatCompletionResponseFormat{
-// 				Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
-// 				JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
-// 					Name:   "something",
-// 					Strict: true,
-// 					Schema: jsonSchema,
-// 				},
-// 			},
-// 		},
-// 	)
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	completion := resp.Choices[0].Message.Content
-// 	log.Debugf("OpenAI response: %s", completion)
-
-// 	// Check if the response is valid in respect to the provided JSON schema
-// 	validationResult := jsonSchema.ValidateJSON([]byte(completion))
-// 	if validationResult.IsValid() {
-// 		log.Debugf("Response is valid according to the declared schema")
-// 	} else {
-// 		errMsg := "Response is not valid according to the schema"
-// 		if sch, err := jsonSchema.MarshalJSON(); err != nil {
-// 			log.Errorf("Failed to marshal schema: %v", err)
-// 		} else {
-// 			log.Errorf("Schema: %s", sch)
-// 		}
-
-// 		for field, err := range validationResult.Errors {
-// 			log.Errorf("Validation error in field '%s': %s", field, err)
-// 			errMsg += "\n" + field + ": " + err.Error()
-// 		}
-// 		return "", fmt.Errorf("%s: %s", errMsg, completion)
-// 	}
-
-// 	return resp.Choices[0].Message.Content, nil
-// }

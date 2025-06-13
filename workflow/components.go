@@ -391,7 +391,7 @@ type CommandAnalysisResponse struct {
 	Final           bool     `json:"final" jsonschema:"required" jsonschema_description:"Set to true if you are confident the debugging process is complete and no further commands are needed. Set to false if more steps are recommended."`
 }
 
-func AnalyzeCommands(prompt string, provider llm.Provider) CommandAnalysisResponse {
+func AnalyzeCommands(prompt string, provider llm.Provider) (CommandAnalysisResponse,error) {
 	log.Debugf("Analyzing commands with prompt: %s", prompt)
 
 	// Generate schema
@@ -402,14 +402,14 @@ func AnalyzeCommands(prompt string, provider llm.Provider) CommandAnalysisRespon
 	res, err := provider.RequestCompletionWithJSONSchema(prompt, schema)
 	if err != nil {
 		log.Errorf("Error analyzing commands: %v", err)
-		return CommandAnalysisResponse{}
+		return CommandAnalysisResponse{}, fmt.Errorf("error analyzing commands: %w", err)
 	}
 
 	var analysisResponse CommandAnalysisResponse
 	if err := json.Unmarshal([]byte(res), &analysisResponse); err != nil {
 		log.Errorf("Failed to unmarshal response: %v", err)
-		return CommandAnalysisResponse{}
+		return CommandAnalysisResponse{}, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return analysisResponse
+	return analysisResponse, nil
 }

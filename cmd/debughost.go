@@ -24,6 +24,11 @@ var debugCmd = &cobra.Command{
 	Use:   "diagnose",
 	Short: "Diagnose an issue on a host",
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Info("Starting host diagnostics...")
+		baseURL, _ := cmd.Flags().GetString("base-url")
+		if baseURL == "" {
+			baseURL = viper.GetString("base_url")
+		}
 		useAzure, _ := cmd.Flags().GetBool("azure")
 		var azureConfig *llm.AzureConfig
 
@@ -42,6 +47,7 @@ var debugCmd = &cobra.Command{
 				SystemPrompt: "You are a Linux system assistant. Analyze the following system diagnostics and provide a clear, concise summary of system health, notable issues, and recommended actions.",
 				Model:        llm.OPENAI_GPT41_Mini, // Using a smaller model for faster response times
 				AzureConfig:  azureConfig,
+				BaseUrl:      baseURL,
 			},
 		)
 
@@ -112,4 +118,5 @@ func init() {
 	debugCmd.Flags().BoolP("sudo", "s", false, "Run all commands with sudo (default: false)")
 	debugCmd.Flags().BoolP("generate-report", "g", false, "Generate a report after debugging (default: false)")
 	debugCmd.Flags().Bool("azure", false, "Use Azure OpenAI instead of OpenAI (default: false)")
+	debugCmd.Flags().StringP("base-url", "b", "", "Base URL for the OpenAI API (optional, e.g., https://api.openai.com/v1)")
 }

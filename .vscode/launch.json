@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch CLI",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "args": [
+                "diagnose",
+                "-b",
+                "http://localhost:4000",
+                "-d",
+                "Slow",
+                "-i"
+            ], // or your command
+            "env": {
+                "OPENAI_API_KEY": "my_api_key",
+            },
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

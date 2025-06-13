@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = `
 log_level: warn
 cmd_whitelist:
 cmd_blacklist:
+base_url:
 azure_openai_api_version: "2024-12-01-preview"
 azure_openai_endpoint:
 initial_commands:
